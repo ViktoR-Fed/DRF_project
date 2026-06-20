@@ -1,4 +1,7 @@
+from django.contrib.auth import get_user_model
 from django.db import models
+
+User = get_user_model()
 
 
 class Course(models.Model):
@@ -18,6 +21,14 @@ class Course(models.Model):
         blank=True,
         null=True,
         verbose_name="Превью (картинка)",
+    )
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="courses",
+        verbose_name="Владелец",
+        null=True,
+        blank=True,
     )
 
     class Meta:
@@ -55,6 +66,14 @@ class Lesson(models.Model):
         null=True,
     )
     video_link = models.URLField(verbose_name="Ссылка на видео", blank=True, null=True)
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="lessons",
+        verbose_name="Владелец",
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         verbose_name = "Урок"
