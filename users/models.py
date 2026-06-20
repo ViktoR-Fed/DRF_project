@@ -1,8 +1,6 @@
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.db import models
 
-from materials.models import Course, Lesson
-
 
 class User(AbstractBaseUser):
     username = None
@@ -44,23 +42,45 @@ class User(AbstractBaseUser):
         return self.email
 
 
-
 class Payment(models.Model):
     class PaymentMethod(models.TextChoices):
         CASH = "cash", "Наличные"
         TRANSFER = "transfer", "Перевод на счет"
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="payments", verbose_name="Пользователь")
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="payments",
+        verbose_name="Пользователь",
+    )
     payment_date = models.DateTimeField(auto_now_add=True, verbose_name="Дата оплаты")
-    paid_course = models.ForeignKey(Course, on_delete=models.SET_NULL, null=True, blank=True, related_name="payments", verbose_name="Оплаченный курс")
-    paid_lesson =models.ForeignKey(Lesson, on_delete=models.SET_NULL, null=True, blank=True, related_name="payments", verbose_name="Оплаченный урок")
-    amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Сумма оплаты")
-    payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices, verbose_name="Способ оплаты")
+    paid_course = models.ForeignKey(
+        "materials.Course",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payments",
+        verbose_name="Оплаченный курс",
+    )
+    paid_lesson = models.ForeignKey(
+        "materials.Lesson",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payments",
+        verbose_name="Оплаченный урок",
+    )
+    amount = models.DecimalField(
+        max_digits=10, decimal_places=2, verbose_name="Сумма оплаты"
+    )
+    payment_method = models.CharField(
+        max_length=20, choices=PaymentMethod.choices, verbose_name="Способ оплаты"
+    )
 
     class Meta:
         verbose_name = "Платеж"
         verbose_name_plural = "Платежи"
-        ordering = ['-payment_date']
+        ordering = ["-payment_date"]
 
     def __str__(self):
         target = self.paid_course if self.paid_course else self.paid_lesson
