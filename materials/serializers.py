@@ -1,8 +1,9 @@
 from rest_framework.serializers import ModelSerializer, SerializerMethodField
 
-from users.models import Subscription
-from .validators import validate_youtube_link, YouTubeValidator
 from materials.models import Course, Lesson
+from users.models import Subscription
+
+from .validators import YouTubeValidator, validate_youtube_link
 
 
 class LessonSerializer(ModelSerializer):
@@ -10,9 +11,7 @@ class LessonSerializer(ModelSerializer):
         model = Lesson
         fields = "__all__"
         read_only_fields = ["owner"]
-        validators = [
-            YouTubeValidator(field='video_link')  # Класс-валидатор
-        ]
+        validators = [YouTubeValidator(field="video_link")]  # Класс-валидатор
 
         def validate_video_link(self, value):
             """Функция-валидатор для поля video_link"""
@@ -22,6 +21,7 @@ class LessonSerializer(ModelSerializer):
 class CourseSerializer(ModelSerializer):
     lessons = LessonSerializer(many=True)
     is_subscribed = SerializerMethodField()
+
     class Meta:
         model = Course
         fields = "__all__"
@@ -29,13 +29,11 @@ class CourseSerializer(ModelSerializer):
 
     def get_is_subscribed(self, obj):
         """Проверяет, подписан ли текущий пользователь на курс"""
-        request = self.context.get('request')
+        request = self.context.get("request")
         if request and request.user.is_authenticated:
-            return Subscription.objects.filter(
-                user=request.user,
-                course=obj
-            ).exists()
+            return Subscription.objects.filter(user=request.user, course=obj).exists()
         return False
+
 
 class CourseDetailSerializer(ModelSerializer):
     lessons_count = SerializerMethodField()
@@ -44,17 +42,21 @@ class CourseDetailSerializer(ModelSerializer):
 
     class Meta:
         model = Course
-        fields = ("name", "description", "preview", "lessons_count", "lessons")
+        fields = (
+            "name",
+            "description",
+            "preview",
+            "lessons_count",
+            "lessons",
+            "is_subscribed",
+        )
         read_only_fields = ["owner"]
 
     def get_lessons_count(self, instance):
         return instance.lessons.count()
 
     def get_is_subscribed(self, obj):
-        request = self.context.get('request')
+        request = self.context.get("request")
         if request and request.user.is_authenticated:
-            return Subscription.objects.filter(
-                user=request.user,
-                course=obj
-            ).exists()
+            return Subscription.objects.filter(user=request.user, course=obj).exists()
         return False

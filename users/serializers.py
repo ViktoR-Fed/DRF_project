@@ -1,4 +1,6 @@
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+from rest_framework.serializers import ModelSerializer
 
 from .models import Payment, User
 
@@ -25,7 +27,13 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "email", "phone", "city", "avatar", "first_name", "last_name"]
+        fields = [
+            "id",
+            "email",
+            "phone",
+            "city",
+            "avatar",
+        ]
         read_only_fields = ["id", "email"]
 
 
@@ -68,3 +76,23 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_full_name(self, obj):
         return f"{obj.first_name} {obj.last_name}".strip() or obj.email
+
+
+class PaymentCreateSerializer(ModelSerializer):
+    class Meta:
+        fields = [
+            "id",
+            "user",
+            "paid_course",
+            "paid_lesson",
+            "amount",
+            "payment_method",
+            "link",
+        ]
+        read_only_fields = ["id", "user", "payment_status", "link"]
+
+    def validate(self, data):
+        # Проверяем, что указан либо курс, либо урок
+        if not data.get("paid_course") and not data.get("paid_lesson"):
+            raise ValidationError("Укажите либо курс, либо урок для оплаты")
+        return data

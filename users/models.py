@@ -7,7 +7,7 @@ class UserManager(BaseUserManager):
 
     def create_user(self, email, password=None, **extra_fields):
         if not email:
-            raise ValueError('Email обязателен')
+            raise ValueError("Email обязателен")
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
@@ -15,14 +15,14 @@ class UserManager(BaseUserManager):
         return user
 
     def create_superuser(self, email, password=None, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('is_active', True)
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("is_active", True)
 
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('Суперпользователь должен иметь is_staff=True')
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Суперпользователь должен иметь is_superuser=True')
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Суперпользователь должен иметь is_staff=True")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Суперпользователь должен иметь is_superuser=True")
 
         return self.create_user(email, password, **extra_fields)
 
@@ -103,6 +103,26 @@ class Payment(models.Model):
     payment_method = models.CharField(
         max_length=20, choices=PaymentMethod.choices, verbose_name="Способ оплаты"
     )
+    stripe_product_id = models.CharField(
+        max_length=255, blank=True, null=True, verbose_name="ID продукта в Stripe"
+    )
+    stripe_price_id = models.CharField(
+        max_length=255, blank=True, null=True, verbose_name="ID цены в Stripe"
+    )
+    stripe_session_id = models.CharField(
+        max_length=255, blank=True, null=True, verbose_name="ID сессии в Stripe"
+    )
+    link = models.URLField(blank=True, null=True, verbose_name="Ссылка на оплату")
+    payment_status = models.CharField(
+        max_length=90,
+        default="pending",
+        choices=[
+            ("pending", "Ожидает оплаты"),
+            ("paid", "Оплачено"),
+            ("failed", "Ошибка"),
+        ],
+        verbose_name="Статус платежа",
+    )
 
     class Meta:
         verbose_name = "Платеж"
@@ -118,27 +138,25 @@ class Subscription(models.Model):
     """
     Модель подписки на обновления курса
     """
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='subscriptions',
-        verbose_name='Пользователь'
+        related_name="subscriptions",
+        verbose_name="Пользователь",
     )
     course = models.ForeignKey(
-        'materials.Course',
+        "materials.Course",
         on_delete=models.CASCADE,
-        related_name='subscriptions',
-        verbose_name='Курс'
+        related_name="subscriptions",
+        verbose_name="Курс",
     )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Дата подписки'
-    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата подписки")
 
     class Meta:
-        verbose_name = 'Подписка'
-        verbose_name_plural = 'Подписки'
-        unique_together = ['user', 'course']
+        verbose_name = "Подписка"
+        verbose_name_plural = "Подписки"
+        unique_together = ["user", "course"]
 
     def __str__(self):
-        return f"{self.user.email} подписан на {self.course.title}"
+        return f"{self.user.email} подписан на {self.course.name}"
