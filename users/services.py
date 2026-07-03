@@ -1,5 +1,9 @@
+from decimal import Decimal
+
 import stripe
 from django.conf import settings
+
+stripe.api_key = settings.STRIPE_API_KEY
 
 
 def create_stripe_product(name, description=None):
@@ -23,10 +27,17 @@ def create_stripe_price(product_id, amount, currency="usd"):
     https://stripe.com/docs/api/prices/create
     """
     try:
-        # Цена указывается в копейках/центах
+        if isinstance(amount, (int, float)):
+            amount_decimal = Decimal(str(amount))
+        else:
+            amount_decimal = amount
+
+        # Переводим в копейки/центы (умножаем на 100)
+        amount_cents = int(amount_decimal * 100)
+
         price = stripe.Price.create(
             product=product_id,
-            unit_amount=int(amount * 100),  # Переводим в копейки
+            unit_amount=amount_cents,
             currency=currency,
         )
         return price
@@ -70,3 +81,16 @@ def get_checkout_session(session_id):
         return session
     except stripe.error.StripeError as e:
         raise Exception(f"Ошибка получения сессии: {str(e)}")
+
+
+def map_stripe_status(stripe_status):
+    """
+    Маппинг статусов Stripe в статусы приложения
+    """
+    status_mapping = {
+        "open": "pending",  # Ожидает оплаты
+        "complete": "paid",  # Оплачено
+        "expired": "failed",  # Истекло
+        "pending": "pending",  # В процессе
+    }
+    return status_mapping.get(stripe_status, "pending")

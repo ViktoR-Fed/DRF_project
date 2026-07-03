@@ -55,6 +55,9 @@ class PaymentSerializer(serializers.ModelSerializer):
             "lesson_name",
             "amount",
             "payment_method",
+            "link",
+            "payment_status",
+            "stripe_session_id",
         ]
 
     def get_course_name(self, obj):
@@ -80,6 +83,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class PaymentCreateSerializer(ModelSerializer):
     class Meta:
+        model = Payment
         fields = [
             "id",
             "user",
