@@ -19,6 +19,7 @@ from .services import (
     create_stripe_product,
     create_stripe_session,
     get_checkout_session,
+    map_stripe_status,
 )
 
 
@@ -108,10 +109,10 @@ class PaymentCreateView(generics.CreateAPIView):
         # Определяем название продукта
         if payment.paid_course:
             product_name = f"Курс: {payment.paid_course.name}"
-            product_description = payment.paid_course.description
+            product_description = payment.paid_course.description or ""
         else:
             product_name = f"Урок: {payment.paid_lesson.name}"
-            product_description = payment.paid_lesson.description
+            product_description = payment.paid_lesson.description or ""
 
         try:
             # 1. Создаем продукт в Stripe
@@ -121,9 +122,7 @@ class PaymentCreateView(generics.CreateAPIView):
             payment.stripe_product_id = product.id
 
             # 2. Создаем цену в Stripe
-            price = create_stripe_price(
-                product_id=product.id, amount=float(payment.amount)
-            )
+            price = create_stripe_price(product_id=product.id, amount=payment.amount)
             payment.stripe_price_id = price.id
 
             # 3. Создаем сессию оплаты
@@ -138,7 +137,8 @@ class PaymentCreateView(generics.CreateAPIView):
             )
 
             payment.stripe_session_id = session.id
-            payment.link = session.url
+            payment.checkout_url = session.url
+            payment.payment_status = "pending"
 
             # Сохраняем изменения
             payment.save()
@@ -147,6 +147,34 @@ class PaymentCreateView(generics.CreateAPIView):
             # Если что-то пошло не так, удаляем платеж
             payment.delete()
             raise ValidationError(f"Ошибка оплаты: {str(e)}")
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            self.perform_create(serializer)
+            payment = serializer.instance
+
+            # Расширенный ответ
+            return Response(
+                {
+                    "payment": {
+                        "id": payment.id,
+                        "amount": payment.amount,
+                        "payment_status": payment.payment_status,
+                        "checkout_url": payment.checkout_url,
+                    },
+                    "checkout_url": payment.checkout_url,
+                    "payment_id": payment.id,
+                    "stripe_session_id": payment.stripe_session_id,
+                    "message": "Ссылка на оплату создана",
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class PaymentStatusView(generics.RetrieveAPIView):
@@ -165,30 +193,37 @@ class PaymentStatusView(generics.RetrieveAPIView):
 
         if payment.stripe_session_id:
             try:
+                # Получаем актуальный статус из Stripe
                 session = get_checkout_session(payment.stripe_session_id)
-                payment.payment_status = session.status
+
+                # Маппинг статуса
+                payment.payment_status = map_stripe_status(session.status)
                 payment.save()
 
                 return Response(
                     {
-                        "payment_id": payment.id,
-                        "status": session.status,
+                        "id": payment.id,
+                        "payment_status": payment.payment_status,
+                        "stripe_status": session.status,
+                        "amount": payment.amount,
+                        "checkout_url": payment.checkout_url,
+                        "updated_at": payment.payment_date,
                         "customer_email": (
                             session.customer_details.email
                             if session.customer_details
                             else None
                         ),
-                        "amount_total": (
-                            session.amount_total / 100 if session.amount_total else None
-                        ),
                     }
                 )
+
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(
             {
-                "payment_id": payment.id,
-                "status": payment.payment_status,
+                "id": payment.id,
+                "payment_status": payment.payment_status,
+                "amount": payment.amount,
+                "checkout_url": payment.checkout_url,
             }
         )

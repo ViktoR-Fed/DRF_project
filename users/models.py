@@ -74,6 +74,11 @@ class Payment(models.Model):
         CASH = "cash", "Наличные"
         TRANSFER = "transfer", "Перевод на счет"
 
+    class PaymentStatus(models.TextChoices):
+        PENDING = "pending", "Ожидает оплаты"
+        PAID = "paid", "Оплачено"
+        FAILED = "failed", "Ошибка"
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,

@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from django.shortcuts import get_object_or_404
 from rest_framework import permissions, status
 from rest_framework.generics import (
@@ -21,6 +23,7 @@ from users.models import Subscription
 
 from .paginators import CoursePaginator, LessonPaginator
 from .permissions import IsModerator, IsOwner
+from .tasks import notify_course_subscribers, send_lesson_update_notification
 
 
 class CourseViewSet(ModelViewSet):
@@ -56,6 +59,22 @@ class CourseViewSet(ModelViewSet):
     def perform_create(self, serializer):
         """Автоматически привязываем владельца при создании"""
         serializer.save(owner=self.request.user)
+
+    def perform_update(self, serializer):
+        """
+        При обновлении курса отправляем уведомления подписчикам
+        """
+        course = self.get_object()
+        last_update = course.updated_at if hasattr(course, "updated_at") else None
+
+        # Сохраняем обновление
+        serializer.save()
+
+        # Отправляем уведомления подписчикам
+        if hasattr(course, "updated_at"):
+            notify_course_subscribers.delay(
+                course_id=course.id, last_update_time=last_update
+            )
 
     def get_queryset(self):
         """Фильтрация объектов в зависимости от прав"""
@@ -125,6 +144,31 @@ class LessonViewSet(ModelViewSet):
     def perform_create(self, serializer):
         """Автоматически привязываем владельца при создании"""
         serializer.save(owner=self.request.user)
+
+    def perform_update(self, serializer):
+        """
+        При обновлении урока отправляем уведомления подписчикам курса
+        """
+        lesson = self.get_object()
+        course = lesson.course
+        last_update = lesson.updated_at if hasattr(lesson, "updated_at") else None
+
+        # Сохраняем обновление
+        serializer.save()
+
+        # Отправляем уведомления подписчикам курса
+        if hasattr(lesson, "updated_at"):
+            # Проверяем, прошло ли более 4 часов с последнего обновления
+            if last_update:
+                time_since_update = datetime.now() - last_update
+                if time_since_update >= timedelta(hours=4):
+                    notify_course_subscribers.delay(
+                        course_id=course.id, last_update_time=last_update
+                    )
+            else:
+                notify_course_subscribers.delay(
+                    course_id=course.id, last_update_time=None
+                )
 
     def get_queryset(self):
         """Фильтрация объектов в зависимости от прав"""
