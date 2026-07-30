@@ -15,10 +15,29 @@
 - Docker и Docker Compose
 - Python 3.12+ (для локальной разработки)
 
-## Быстрый старт
 
-### 1. Клонирование репозитория
+## Деплой на сервер
+
+### Требования
+- Docker и Docker Compose на сервере
+- Настроенные GitHub Secrets
+
+### Автоматический деплой
+При пуше в ветку `main` или `master`:
+1. Запускаются тесты
+2. Собирается Docker-образ
+3. Образ загружается в Docker Hub
+4. Происходит деплой на сервер
+
+### Ручной деплой
 
 ```bash
-git clone https://git@github.com:ViktoR-Fed/DRF_project.git
-cd DRF_project
+# Сборка образа
+docker build -f Dockerfile.prod -t drf-project:latest .
+
+# Загрузка на сервер
+scp -r . deploy@your-server-ip:/app/drf_project
+
+# На сервере
+cd /app/drf_project
+docker-compose up -d --build
