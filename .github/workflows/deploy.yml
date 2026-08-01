@@ -61,8 +61,8 @@ jobs:
 
     - name: Set up environment
       run: |
-        cp .env.template .env
-        sed -i 's/POSTGRES_HOST=db/POSTGRES_HOST=localhost/g' .env
+        cp .env.example .env
+        sed -i 's/HOST=db/HOST=localhost/g' .env
         sed -i 's/REDIS_HOST=redis/REDIS_HOST=localhost/g' .env
         sed -i 's/DEBUG=True/DEBUG=False/g' .env
 
