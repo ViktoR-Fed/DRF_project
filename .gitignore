@@ -226,3 +226,36 @@ __marimo__/
 .DS_Store
 Thumbs.db
 
+# Python
+
+*.py[cod]
+
+poetry.lock
+
+
+# Django
+
+*.pyc
+
+staticfiles/
+static/
+
+# IDE
+
+*.swo
+
+# Docker
+
+docker-compose.override.yml
+
+
+# Coverage
+htmlcov/
+
+
+
+# Project specific
+*.pem
+*.key
+*.crt
+deploy_files/
